@@ -2,7 +2,7 @@
 """Command-line interface for the query language which will print out the
 targets to render.  Useful for debugging and general interest."""
 from __future__ import print_function
-import argparse, sys, pprint, logging, os
+import argparse, sys, pprint, logging, os, urllib
 from graph_explorer import graphs
 from graph_explorer.query import Query
 from graph_explorer.structured_metrics import StructuredMetrics
@@ -49,9 +49,18 @@ def main():
     built, _ = graphs.build_from_targets(matching, query, preferences)
 
     print("Targets:")
-    for _, line in built.iteritems():
-        pprint.pprint(line)
+    for _, graph in built.iteritems():
+        pprint.pprint(graph)
     print("")
+
+    print("Render url:"))
+
+    for _, graph in built.iteritems():
+        url = "http://graphite/render/"
+        targets = urllib.urlencode([('target', target['target'])
+                                     for target in graph['targets']])
+        query = "".join(targets)
+        print("http://graphite/render/?{0}".format(query))
 
     return 0
 
