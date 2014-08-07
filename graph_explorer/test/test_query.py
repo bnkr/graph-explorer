@@ -168,3 +168,21 @@ class TestQueryAdvanced(_QueryTestBase):
             'group_by': {'target_type': [''], 'unit': [''], 'mountpoint': ['dfs1', ''], 'server': ['']},
             'target_modifiers': [Query.derive_counters],
         }))
+
+    def test_percent_by_field(self):
+        query = Query("collectd_plugin=cpu node percent by type")
+        # note: ideally, the order would be <default group by strong> + user defined group by's
+        # but that was a little hard to implement
+        self.assertQueryMatches(query, self.dummyQuery(**{
+            'ast': (
+                'match_and',
+                ('match_tag_exists', 'target_type'),
+                ('match_tag_exists', 'unit'),
+                ('match_tag_equality', 'collectd_plugin', 'cpu'),
+                ('match_id_regex', 'node'),
+            ),
+            'patterns': ['target_type=', 'unit=', 'collectd_plugin=cpu', 'node'],
+            'group_by': {'target_type': [''], 'unit': [''], 'server': ['']},
+            'percent_by': {'type': [''], },
+            'target_modifiers': [Query.derive_counters],
+        }))

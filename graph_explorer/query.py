@@ -62,6 +62,7 @@ class Query(dict):
         (query_str, sum_by_str) = parse_val(query_str, 'sum by ', '[^ ]+')
         (query_str, avg_by_str) = parse_val(query_str, 'avg by ', '[^ ]+')
         (query_str, avg_over_str) = parse_val(query_str, 'avg over ', '[^ ]+')
+        (query_str, percent_by_str) = parse_val(query_str, 'percent by ', '[^ ]+')
         (query_str, min_str) = parse_val(query_str, 'min ', '[^ ]+')
         (query_str, max_str) = parse_val(query_str, 'max ', '[^ ]+')
         explicit_group_by = {}
@@ -115,12 +116,19 @@ class Query(dict):
                 avg_over = avg_over.groups()
                 self['avg_over'] = (int(avg_over[0]), avg_over[1])
 
+        # Tag to compute percentages in the context of.  In the future the list
+        # would contain a specification for a subset of values of the tag to
+        # use as the context for the percentage.  (See #121)
+        if percent_by_str is not None:
+            self['percent_by'] = {percent_by_str: ['']}
+
         (query_str, self['limit_targets']) = parse_val(query_str, 'limit ', '[^ ]+', self['limit_targets'])
         self['limit_targets'] = int(self['limit_targets'])
 
         # split query_str into multiple patterns which are all matched independently
         # this allows you write patterns in any order, and also makes it easy to use negations
         self['patterns'] += query_str.split()
+
 
     # process the syntactic sugar
     def prepare(self):
