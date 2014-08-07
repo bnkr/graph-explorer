@@ -53,7 +53,7 @@ def main():
         pprint.pprint(graph)
     print("")
 
-    print("Render url:"))
+    print("Render url:")
 
     for _, graph in built.iteritems():
         url = "http://graphite/render/"

@@ -85,6 +85,9 @@ def build_from_targets(targets, query, preferences):
     sum_by = query['sum_by']
     avg_by = query['avg_by']
     avg_over = query['avg_over']
+    # TODO: for consistentcy this should not be optional
+    percent_by = query.get('percent_by', None)
+
     # i'm gonna assume you never use second and your datapoints are stored with
     # minutely resolution. later on we can use config options for this (or
     # better: somehow query graphite about it)
@@ -212,11 +215,74 @@ def build_from_targets(targets, query, preferences):
     # remove targets/graphs over the limit
     graphs = limit_targets(graphs, query['limit_targets'])
 
+    # scaletoseconds is (?) not useful in a percentage (but I can't get rid of
+    # it without also removing derivatives)
+    if percent_by:
+        for (graph_key, graph_config) in graphs.items():
+            for target in graph_config['targets']:
+                try:
+                    # query['target_modifiers'].remove(Query.derive_counters)
+                    pass
+                except ValueError:
+                    pass
+
     # Apply target modifiers (like movingAverage, summarize, ...)
     for (graph_key, graph_config) in graphs.items():
         for target in graph_config['targets']:
             for target_modifier in query['target_modifiers']:
                 target_modifier(target, graph_config)
+
+    # To apply a percentage in the context of other things, we need to have the
+    # modifiers already applied, even though this is really just a modifier
+    # itself.
+    for (graph_key, graph_config) in graphs.items():
+
+        # Avoid nesting.
+        if not percent_by:
+            break
+
+        percent_by_tag = percent_by.keys()[0]
+
+        # Check which tags have multiple values.  In this case we want multiple
+        # lines to avoid doing an aggregation the user didn't ask for.
+        #
+        # (Possibly I just needed the union of (target['vaiables'] here)
+        tag_values = {}
+        for target in graph_config['targets']:
+            for tag, value in target['tags'].iteritems():
+                # TODO: This breaks when you use sum by <tag>
+                tag_values.setdefault(tag, set()).add(value)
+
+        by_values = tag_values[percent_by_tag]
+        these_vary = [tag for tag, values in tag_values.iteritems()
+                      if len(values) > 1 and tag != percent_by_tag]
+
+        contexts = dict(((value, []) for value in by_values))
+
+        contexts = {}
+
+        # For every target, look through all the other targets on this graph and
+        # make a context using only those targets with matching tags.
+        for target in graph_config['targets']:
+            in_context = []
+            for candidate in graph_config['targets']:
+                for tag in these_vary:
+                    if candidate['tags'][tag] != target['tags'][tag]:
+                        continue
+
+                    in_context.append(candidate['target'])
+
+            contexts[target['id']] = in_context
+
+        # Now we know all the contexts, we can mess with the targets.
+        for target in graph_config['targets']:
+            hax = "REPLACE_ME"
+            modifier = Query.graphite_function_applier('asPercent', hax)
+            modifier(target, graph_config)
+
+            others = contexts[target['id']]
+            context = "sumSeries({0})".format(",".join(others))
+            target['target'] = target['target'].replace('"REPLACE_ME"', context)
 
     # if in a graph all targets have a tag with the same value, they are
     # effectively constants, so promote them.  this makes the display of the
