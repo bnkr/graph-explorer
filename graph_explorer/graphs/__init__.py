@@ -250,7 +250,15 @@ def build_from_targets(targets, query, preferences):
         tag_values = {}
         for target in graph_config['targets']:
             for tag, value in target['tags'].iteritems():
-                # TODO: This breaks when you use sum by <tag>
+                # 'Sum by tag' causes the value to be like ("some text", [value1,
+                # value2]).  Presumably this also means that if you have several
+                # aggregations then this will not work properly (however, in
+                # fact this algorithm will crash further up if you to 'avg by'
+                # with 'sum by' which are the only available aggregations at
+                # this time.)
+                if isinstance(value, tuple):
+                    value = "+".join(value[1])
+
                 tag_values.setdefault(tag, set()).add(value)
 
         by_values = tag_values[percent_by_tag]
@@ -272,7 +280,8 @@ def build_from_targets(targets, query, preferences):
 
                     in_context.append(candidate['target'])
 
-            contexts[target['id']] = in_context
+            # In aggergations the id is a list.
+            contexts[",".join(target['id'])] = in_context
 
         # Now we know all the contexts, we can mess with the targets.
         for target in graph_config['targets']:
@@ -280,7 +289,7 @@ def build_from_targets(targets, query, preferences):
             modifier = Query.graphite_function_applier('asPercent', hax)
             modifier(target, graph_config)
 
-            others = contexts[target['id']]
+            others = contexts[",".join(target['id'])]
             context = "sumSeries({0})".format(",".join(others))
             target['target'] = target['target'].replace('"REPLACE_ME"', context)
 
