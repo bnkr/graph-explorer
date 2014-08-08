@@ -273,7 +273,12 @@ def build_from_targets(targets, query, preferences):
         # make a context using only those targets with matching tags.
         for target in graph_config['targets']:
             in_context = []
+
             for candidate in graph_config['targets']:
+                if not these_vary:
+                    in_context.append(candidate['target'])
+                    continue
+
                 for tag in these_vary:
                     if candidate['tags'][tag] != target['tags'][tag]:
                         continue
