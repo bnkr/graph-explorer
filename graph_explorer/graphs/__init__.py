@@ -246,16 +246,12 @@ def build_from_targets(targets, query, preferences):
 
                     tag_values.setdefault(tag, set()).add(value)
 
-            by_values = tag_values[percent_by_tag]
             these_vary = [tag for tag, values in tag_values.iteritems()
                           if len(values) > 1 and tag != percent_by_tag]
 
-            contexts = dict(((value, []) for value in by_values))
-
-            contexts = {}
-
             # For every target, look through all the other targets on this graph
             # and make a context using only those targets with matching tags.
+            contexts = {}
             for target in graph_config['targets']:
                 in_context = []
 
