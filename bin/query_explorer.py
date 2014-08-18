@@ -15,7 +15,7 @@ def main():
     parser.add_argument("-c", "--config-file", help="Graph explorer configuration.")
     parser.add_argument("-e", "--es-host", help="Elasticsearch host.")
     parser.add_argument("--es-port", help="Elasticsearch port.", default=9200)
-    parser.add_argument("--index", help="Index name.", default="graph_explorer")
+    parser.add_argument("--index", help="Index name.",)
     parser.add_argument("words", nargs="+")
 
     cli = parser.parse_args()
@@ -37,13 +37,19 @@ def main():
     # Bad connection settings cause the process to hang.
     if cli.es_host:
         settings.es_host = cli.es_host
+    elif not cli.config_file:
+        settings.es_port = "localhost"
 
     if cli.es_port:
         settings.es_port = cli.es_port
+    elif not cli.config_file:
+        settings.es_port = 9200
 
     # No failure if this just doesn't exist.
     if cli.index:
         settings.es_index = cli.index
+    elif not cli.config_file:
+        settings.es_index = "graphite_metrics2"
 
     metrics = StructuredMetrics(settings, logging.getLogger())
     _, matching = metrics.matching(query)
