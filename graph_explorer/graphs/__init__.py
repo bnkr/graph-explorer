@@ -214,17 +214,6 @@ def build_from_targets(targets, query, preferences):
     # remove targets/graphs over the limit
     graphs = limit_targets(graphs, query['limit_targets'])
 
-    # scaletoseconds is (?) not useful in a percentage (but I can't get rid of
-    # it without also removing derivatives)
-    if percent_by:
-        for (graph_key, graph_config) in graphs.items():
-            for target in graph_config['targets']:
-                try:
-                    # query['target_modifiers'].remove(Query.derive_counters)
-                    pass
-                except ValueError:
-                    pass
-
     # Apply target modifiers (like movingAverage, summarize, ...)
     for (graph_key, graph_config) in graphs.items():
         for target in graph_config['targets']:
