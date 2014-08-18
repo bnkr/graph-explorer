@@ -223,68 +223,65 @@ def build_from_targets(targets, query, preferences):
     # To apply a percentage in the context of other things, we need to have the
     # modifiers already applied, even though this is really just a modifier
     # itself.
-    for (graph_key, graph_config) in graphs.items():
+    if percent_by:
+        for (graph_key, graph_config) in graphs.items():
+            percent_by_tag = percent_by.keys()[0]
 
-        # Avoid nesting.
-        if not percent_by:
-            break
+            # Check which tags have multiple values.  In this case we want
+            # multiple lines to avoid doing an aggregation the user didn't ask
+            # for.
+            #
+            # (Possibly I just needed the union of (target['vaiables'] here)
+            tag_values = {}
+            for target in graph_config['targets']:
+                for tag, value in target['tags'].iteritems():
+                    # 'Sum by tag' causes the value to be like ("some text",
+                    # [value1, value2]).  Presumably this also means that if you
+                    # have several aggregations then this will not work properly
+                    # (however, in fact this algorithm will crash further up if
+                    # you to 'avg by' with 'sum by' which are the only available
+                    # aggregations at this time.)
+                    if isinstance(value, tuple):
+                        value = "+".join(value[1])
 
-        percent_by_tag = percent_by.keys()[0]
+                    tag_values.setdefault(tag, set()).add(value)
 
-        # Check which tags have multiple values.  In this case we want multiple
-        # lines to avoid doing an aggregation the user didn't ask for.
-        #
-        # (Possibly I just needed the union of (target['vaiables'] here)
-        tag_values = {}
-        for target in graph_config['targets']:
-            for tag, value in target['tags'].iteritems():
-                # 'Sum by tag' causes the value to be like ("some text", [value1,
-                # value2]).  Presumably this also means that if you have several
-                # aggregations then this will not work properly (however, in
-                # fact this algorithm will crash further up if you to 'avg by'
-                # with 'sum by' which are the only available aggregations at
-                # this time.)
-                if isinstance(value, tuple):
-                    value = "+".join(value[1])
+            by_values = tag_values[percent_by_tag]
+            these_vary = [tag for tag, values in tag_values.iteritems()
+                          if len(values) > 1 and tag != percent_by_tag]
 
-                tag_values.setdefault(tag, set()).add(value)
+            contexts = dict(((value, []) for value in by_values))
 
-        by_values = tag_values[percent_by_tag]
-        these_vary = [tag for tag, values in tag_values.iteritems()
-                      if len(values) > 1 and tag != percent_by_tag]
+            contexts = {}
 
-        contexts = dict(((value, []) for value in by_values))
+            # For every target, look through all the other targets on this graph
+            # and make a context using only those targets with matching tags.
+            for target in graph_config['targets']:
+                in_context = []
 
-        contexts = {}
-
-        # For every target, look through all the other targets on this graph and
-        # make a context using only those targets with matching tags.
-        for target in graph_config['targets']:
-            in_context = []
-
-            for candidate in graph_config['targets']:
-                if not these_vary:
-                    in_context.append(candidate['target'])
-                    continue
-
-                for tag in these_vary:
-                    if candidate['tags'][tag] != target['tags'][tag]:
+                for candidate in graph_config['targets']:
+                    if not these_vary:
+                        in_context.append(candidate['target'])
                         continue
 
-                    in_context.append(candidate['target'])
+                    for tag in these_vary:
+                        if candidate['tags'][tag] != target['tags'][tag]:
+                            continue
 
-            # In aggergations the id is a list.
-            contexts[",".join(target['id'])] = in_context
+                        in_context.append(candidate['target'])
 
-        # Now we know all the contexts, we can mess with the targets.
-        for target in graph_config['targets']:
-            hax = "REPLACE_ME"
-            modifier = Query.graphite_function_applier('asPercent', hax)
-            modifier(target, graph_config)
+                # In aggergations the id is a list.
+                contexts[",".join(target['id'])] = in_context
 
-            others = contexts[",".join(target['id'])]
-            context = "sumSeries({0})".format(",".join(others))
-            target['target'] = target['target'].replace('"REPLACE_ME"', context)
+            # Now we know all the contexts, we can mess with the targets.
+            for target in graph_config['targets']:
+                hax = "REPLACE_ME"
+                modifier = Query.graphite_function_applier('asPercent', hax)
+                modifier(target, graph_config)
+
+                others = contexts[",".join(target['id'])]
+                context = "sumSeries({0})".format(",".join(others))
+                target['target'] = target['target'].replace('"REPLACE_ME"', context)
 
     # if in a graph all targets have a tag with the same value, they are
     # effectively constants, so promote them.  this makes the display of the
