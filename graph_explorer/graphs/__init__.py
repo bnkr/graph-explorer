@@ -271,13 +271,10 @@ def build_from_targets(targets, query, preferences):
 
             # Now we know all the contexts, we can mess with the targets.
             for target in graph_config['targets']:
-                hax = "REPLACE_ME"
-                modifier = Query.graphite_function_applier('asPercent', hax)
-                modifier(target, graph_config)
-
                 others = contexts[",".join(target['id'])]
-                context = "sumSeries({0})".format(",".join(others))
-                target['target'] = target['target'].replace('"REPLACE_ME"', context)
+                target['target'] = "asPercent({0}, sumSeries({1}))".format(
+                        target['target'],
+                        ",".join(others))
 
     # if in a graph all targets have a tag with the same value, they are
     # effectively constants, so promote them.  this makes the display of the
