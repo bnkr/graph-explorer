@@ -85,8 +85,7 @@ def build_from_targets(targets, query, preferences):
     sum_by = query['sum_by']
     avg_by = query['avg_by']
     avg_over = query['avg_over']
-    # TODO: for consistentcy this should not be optional
-    percent_by = query.get('percent_by', None)
+    percent_by = query['percent_by']
 
     # i'm gonna assume you never use second and your datapoints are stored with
     # minutely resolution. later on we can use config options for this (or

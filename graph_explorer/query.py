@@ -15,6 +15,7 @@ class Query(dict):
         'group_by': {'target_type=': [''], 'unit=': [''], 'server': ['']},
         'sum_by': {},
         'avg_by': {},
+        'percent_by': None,
         'avg_over': None,
         'min': None,
         'max': None,
